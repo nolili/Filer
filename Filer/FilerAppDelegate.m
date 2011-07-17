@@ -8,10 +8,16 @@
 
 #import "FilerAppDelegate.h"
 
+#import "CompositeTableVIewController.h"
+
+#import "Folder.h"
+
 @implementation FilerAppDelegate
 
 
 @synthesize window=_window;
+
+@synthesize navigationController=_navigationController;
 
 @synthesize managedObjectContext=__managedObjectContext;
 
@@ -21,7 +27,15 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-    // Override point for customization after application launch.
+    self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+    
+    CompositeTableVIewController *compositeTableViewController = [[CompositeTableVIewController alloc] init];
+    compositeTableViewController.currentComposite = [self getRootComposite];
+    compositeTableViewController.managedObjectContext = self.managedObjectContext;
+    UINavigationController *aNavigationController = [[UINavigationController alloc] initWithRootViewController:compositeTableViewController];
+    self.navigationController = aNavigationController;
+    
+    [self.window addSubview:self.navigationController.view];
     [self.window makeKeyAndVisible];
     return YES;
 }
@@ -191,5 +205,40 @@
 {
     return [[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] lastObject];
 }
+
+#pragma mark - Get RootComposite
+
+- (Folder*)createRootComposite {
+    Folder *rootComposite = (Folder*)[NSEntityDescription insertNewObjectForEntityForName:@"Folder" inManagedObjectContext:self.managedObjectContext];
+    [rootComposite setValue:@"root" forKey:@"name"];
+    return rootComposite;
+}
+
+- (Folder*)getRootComposite
+{
+    // Create the fetch request for the entity.
+    NSFetchRequest *fetchRequest = [[NSFetchRequest alloc] init];
+    // Edit the entity name as appropriate.
+    NSEntityDescription *entity = [NSEntityDescription entityForName:@"Composite" inManagedObjectContext:self.managedObjectContext];
+    [fetchRequest setEntity:entity];
+    
+    NSPredicate *predicate = [NSPredicate predicateWithFormat:@"parent = %@" ,nil];
+    [fetchRequest setPredicate:predicate];
+    
+    NSArray * result = [self.managedObjectContext executeFetchRequest:fetchRequest error:nil];
+    
+    if ([result count] == 0) {
+        NSLog(@"faild");
+        return [self createRootComposite];
+    }
+    
+    Folder *rootComposite = (Folder*)[result lastObject];
+        
+    [predicate release];
+    [fetchRequest release];
+    
+    return rootComposite;
+}  
+
 
 @end
